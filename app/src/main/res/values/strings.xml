@@ -2,4 +2,8 @@
     <string name="app_name">DataProtect</string>
     <string name="btn_locked_lock">Lock</string>
     <string name="btn_locked_unlock">Unlock</string>
+
+    <string name="print_title">Unlock DataProtect</string>
+    <string name="print_instructions">Touch the fingerprint sensor</string>
+    <string name="print_cancel_btn">Cancel</string>
 </resources>

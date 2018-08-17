@@ -1,5 +1,6 @@
 package org.mozilla.mmiller.dataprotect
 
+import android.content.Context
 import android.content.SharedPreferences
 import android.support.v7.app.AppCompatActivity
 
@@ -14,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import org.mozilla.mmiller.dataprotect.FingerprintDialogFragment
 import java.nio.charset.StandardCharsets
 
 class KeyValAdapter(
@@ -55,7 +57,7 @@ class KeyValAdapter(
     }
 }
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), FingerprintDialogFragment.FingerprintActionListener {
     private lateinit var keychain : KeystoreAccess
     private val itemKeys: List<String>
 
@@ -109,10 +111,34 @@ class MainActivity : AppCompatActivity() {
     private fun onToggleLockedClicked() {
         if (!keychain.locked) {
             keychain.lock()
+            doLockUpdated()
         } else {
-            keychain.unlock()
+            startUnlock()
         }
+    }
+
+    private fun startUnlock() {
+        val dlg = FingerprintDialogFragment()
+        if (!dlg.start(this, keychain)) {
+            // just do the unlock ...
+            keychain.unlock()
+            doLockUpdated()
+        }
+    }
+
+    private fun doLockUpdated() {
         btnToggleLocked.setText(if (keychain.locked) R.string.btn_locked_unlock else R.string.btn_locked_lock)
         keyvalAdapter.notifyDataSetChanged()
+    }
+
+    override fun onFingerprintCanceled(dlg: FingerprintDialogFragment) {
+        Log.d("Main", "fingerprint unlock canceled")
+        doLockUpdated()
+    }
+
+    override fun onFingerprintFound(dlg: FingerprintDialogFragment) {
+        Log.d("Main", "fingerprint unlock success!")
+        keychain.unlock()
+        doLockUpdated()
     }
 }

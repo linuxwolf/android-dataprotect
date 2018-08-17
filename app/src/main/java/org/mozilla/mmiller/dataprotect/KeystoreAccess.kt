@@ -68,25 +68,38 @@ class KeystoreAccess {
         cache[label] = key
     }
 
-    fun encryptBytes(label : String, pdata : ByteArray) : ByteArray {
+    fun createEncryptCipher(label : String) : Cipher {
         val key = cache[label] ?: throw IllegalArgumentException("unknonwn label: $label")
 
+        val cipher = Cipher.getInstance(CIPHER_SPEC)
+        cipher.init(Cipher.ENCRYPT_MODE, key)
+
+        return cipher
+    }
+    fun createDecryptCipher(label : String, iv : ByteArray) : Cipher {
+        val key = cache[label] ?: throw IllegalArgumentException("unknonwn label: $label")
+
+        val cipher = Cipher.getInstance(CIPHER_SPEC)
+        val spec = GCMParameterSpec(128, iv)
+        cipher.init(Cipher.DECRYPT_MODE, key, spec)
+
+        return cipher;
+    }
+
+    fun encryptBytes(label : String, pdata : ByteArray) : ByteArray {
         // outputs what is called a "5116-style" crypto object:
         //    <cipher inputs> || <cipher text + tag>
         // The <cipher inputs> include the following here:
         //    <version = 0x01> || <iv/nonce (12 bytes)>
-        val cipher = Cipher.getInstance(CIPHER_SPEC)
-        cipher.init(Cipher.ENCRYPT_MODE, key)
+        val cipher = createEncryptCipher(label)
+        val cdata = cipher.doFinal(pdata)
 
         val ver = 0x01
         val iv = cipher.iv
 
-        val cdata = cipher.doFinal(pdata)
         return byteArrayOf(ver.toByte(), *iv, *cdata)
     }
     fun decryptBytes(label : String, encrypted : ByteArray) : ByteArray {
-        val key = cache[label] ?: throw IllegalArgumentException("unknonwn label: $label")
-
         // expects a "5116-style" crypto object from above
         val ver = encrypted[0].toInt()
         if (ver != 0x01) {
@@ -96,8 +109,7 @@ class KeystoreAccess {
         val iv = encrypted.sliceArray(1..12)
         val cdata = encrypted.sliceArray(13..encrypted.size-1)
 
-        val cipher = Cipher.getInstance(CIPHER_SPEC)
-        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
+        val cipher = createDecryptCipher(label, iv)
         val pdata = cipher.doFinal(cdata)
 
         return pdata
