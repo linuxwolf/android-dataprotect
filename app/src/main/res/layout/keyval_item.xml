@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="50sp">
+
+    <TextView
+        android:id="@+id/key_view"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight=".25" />
+
+    <TextView
+        android:id="@+id/val_view"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight=".75" />
+</LinearLayout>

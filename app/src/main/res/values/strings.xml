@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">DataProtect</string>
+    <string name="btn_locked_lock">Lock</string>
+    <string name="btn_locked_unlock">Unlock</string>
 </resources>
