@@ -119,7 +119,6 @@ class MainActivity : AppCompatActivity(), BiometricManager.OnActionListener {
 
     private fun startUnlock() {
         val biometrics = BiometricManager()
-        biometrics.listener = this
         biometrics.start(this, keychain)
     }
 

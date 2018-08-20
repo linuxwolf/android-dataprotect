@@ -1,28 +1,25 @@
+@file:Suppress("DEPRECATION")
+
 package org.mozilla.mmiller.dataprotect
 
 import android.app.AlertDialog
 import android.app.Dialog
 import android.app.KeyguardManager
 import android.content.Context
-import android.content.DialogInterface
 import android.hardware.fingerprint.FingerprintManager
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.support.v4.app.DialogFragment
+import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
+import javax.crypto.Cipher
 
 class FingerprintDialogFragment : DialogFragment() {
-    interface FingerprintActionListener {
-        fun onFingerprintCanceled(dlg: FingerprintDialogFragment)
-        fun onFingerprintFound(dlg: FingerprintDialogFragment)
-    }
-
-    private var listener : FingerprintActionListener? = null
+    private var listener : BiometricManager.OnActionListener? = null
     private var canceller : CancellationSignal? = null
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val res = resources
         val inflater = activity!!.layoutInflater
         val dlg = AlertDialog.Builder(activity)
                 .setNegativeButton(R.string.print_cancel_btn, { _, _ -> doCancel() })
@@ -36,17 +33,19 @@ class FingerprintDialogFragment : DialogFragment() {
     override fun onAttach(context: Context?) {
         super.onAttach(context)
 
-        listener = context as FingerprintActionListener
+        listener = context as BiometricManager.OnActionListener
     }
 
     private fun doCancel() {
-        canceller?.cancel()
-        listener?.onFingerprintCanceled(this)
+        listener?.onCanceled()
+        val c = canceller
+        canceller = null
+        c?.cancel()
     }
 
-    fun start(parent : AppCompatActivity, keychain : KeystoreAccess) : Boolean {
-        val keyguard = parent.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-        val printman = parent.getSystemService(Context.FINGERPRINT_SERVICE) as FingerprintManager
+    fun start(context : Context, cipher : Cipher) : Boolean {
+        val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        val printman = context.getSystemService(Context.FINGERPRINT_SERVICE) as FingerprintManager
 
         if (!printman.isHardwareDetected()) {
             Log.d("printdialog", "no fingerprint hardware detected!")
@@ -62,25 +61,42 @@ class FingerprintDialogFragment : DialogFragment() {
         }
 
         // assume just fingerprints for now ...
-        keychain.generate("fingerprint")
-        val crypto = FingerprintManager.CryptoObject(keychain.createEncryptCipher("fingerprint"))
+        val crypto = FingerprintManager.CryptoObject(cipher)
         canceller = CancellationSignal()
         printman.authenticate(crypto, canceller, 0, Handler(), null)
 
-        show(parent.supportFragmentManager, "fingerprint")
+        show((context as AppCompatActivity).supportFragmentManager, "fingerprint")
 
         return true
     }
 
     private inner class Handler : FingerprintManager.AuthenticationCallback() {
+        override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
+            if (canceller == null) {
+                Log.d("printdialog", "assume already cancelled")
+            } else {
+                Log.w("printdialog", "auth failed ($errorCode: $errString)")
+                when (errorCode) {
+                    FingerprintManager.FINGERPRINT_ERROR_HW_NOT_PRESENT -> doCancel()
+                    FingerprintManager.FINGERPRINT_ERROR_NO_FINGERPRINTS -> doCancel()
+                    FingerprintManager.FINGERPRINT_ERROR_USER_CANCELED -> doCancel()
+                    else -> {
+                        canceller?.cancel()
+                        listener?.onError(errorCode)
+                    }
+                }
+            }
+            this@FingerprintDialogFragment.dismiss()
+        }
         override fun onAuthenticationFailed() {
             Log.w("printdialog", "bad fingerprint")
+            // TODO: show bad print icon ...
         }
 
         override fun onAuthenticationSucceeded(result: FingerprintManager.AuthenticationResult?) {
             Log.i("printdialog", "good print!")
-            listener?.onFingerprintFound(this@FingerprintDialogFragment)
             this@FingerprintDialogFragment.dismiss()
+            listener?.onFound()
         }
     }
 }
