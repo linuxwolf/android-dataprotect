@@ -57,7 +57,7 @@ class KeyValAdapter(
     }
 }
 
-class MainActivity : AppCompatActivity(), FingerprintDialogFragment.FingerprintActionListener {
+class MainActivity : AppCompatActivity(), BiometricManager.OnActionListener {
     private lateinit var keychain : KeystoreAccess
     private val itemKeys: List<String>
 
@@ -118,12 +118,9 @@ class MainActivity : AppCompatActivity(), FingerprintDialogFragment.FingerprintA
     }
 
     private fun startUnlock() {
-        val dlg = FingerprintDialogFragment()
-        if (!dlg.start(this, keychain)) {
-            // just do the unlock ...
-            keychain.unlock()
-            doLockUpdated()
-        }
+        val biometrics = BiometricManager()
+        biometrics.listener = this
+        biometrics.start(this, keychain)
     }
 
     private fun doLockUpdated() {
@@ -131,12 +128,16 @@ class MainActivity : AppCompatActivity(), FingerprintDialogFragment.FingerprintA
         keyvalAdapter.notifyDataSetChanged()
     }
 
-    override fun onFingerprintCanceled(dlg: FingerprintDialogFragment) {
+    override fun onCanceled() {
         Log.d("Main", "fingerprint unlock canceled")
         doLockUpdated()
     }
 
-    override fun onFingerprintFound(dlg: FingerprintDialogFragment) {
+    override fun onError(code: Int) {
+        Log.d("Main", "fingerprint unlock failed! ($code)")
+    }
+
+    override fun onFound() {
         Log.d("Main", "fingerprint unlock success!")
         keychain.unlock()
         doLockUpdated()
