@@ -55,10 +55,12 @@ class KeystoreAccess {
     fun available(label: String) = cache.contains(label)
     fun generate(label: String) {
         if (cache.contains(label)) {
+            Log.d("KeychainAccess", "label '$label' already generated")
             return
         }
 
         val spec = KeyGenParameterSpec.Builder(label, KeyProperties.PURPOSE_DECRYPT or KeyProperties.PURPOSE_ENCRYPT)
+                .setKeySize(256)
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .build()
@@ -66,6 +68,7 @@ class KeystoreAccess {
         keygen.init(spec)
         val key = keygen.generateKey()
         cache[label] = key
+        Log.d("KeychainAccess", "key generated for '$label'")
     }
 
     fun createEncryptCipher(label : String) : Cipher {
@@ -83,7 +86,7 @@ class KeystoreAccess {
         val spec = GCMParameterSpec(128, iv)
         cipher.init(Cipher.DECRYPT_MODE, key, spec)
 
-        return cipher;
+        return cipher
     }
 
     fun encryptBytes(label : String, pdata : ByteArray) : ByteArray {
