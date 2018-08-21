@@ -7,8 +7,6 @@ import android.content.DialogInterface
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
 import android.os.CancellationSignal
-import android.support.v4.app.DialogFragment
-import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import javax.crypto.Cipher
 
@@ -28,9 +26,14 @@ class BiometricManager {
         }
         listener = context
 
+        val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        if (!keyguard.isDeviceSecure()) {
+            Log.d("printdialog", "device is not secured with Pattern/PIN/Password")
+            listener?.onFound()
+        }
+
         // prep a Cipher for the eventual CryptoObject
-        keychain.generate("biometrics")
-        val cipher = keychain.createEncryptCipher("biometrics")
+        val cipher = keychain.createEncryptCipher("keychain")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             startBiometricPrompt(context, cipher)
         } else {
@@ -55,7 +58,7 @@ class BiometricManager {
         }
         val prompt = BiometricPrompt.Builder(context)
                 .setTitle(res.getString(R.string.print_title))
-                .setDescription(res.getString(R.string.print_instructions))
+                .setDescription(res.getString(R.string.print_instructions_touch))
                 .setNegativeButton(res.getString(R.string.print_cancel_btn),
                         runner,
                         clickHandler)
@@ -71,7 +74,7 @@ class BiometricManager {
             Log.d("biometrics", "auth error $errorCode: $errString")
             when (errorCode) {
                 BiometricPrompt.BIOMETRIC_ERROR_HW_NOT_PRESENT,
-                BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS,
+                BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS -> listener?.onFound()
                 BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED -> listener?.onCanceled()
                 else -> listener?.onError(errorCode)
             }
