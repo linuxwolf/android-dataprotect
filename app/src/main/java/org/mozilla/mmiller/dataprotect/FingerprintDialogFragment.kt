@@ -2,15 +2,15 @@
 
 package org.mozilla.mmiller.dataprotect
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.app.Dialog
-import android.app.KeyguardManager
 import android.content.Context
+import android.content.Intent
 import android.hardware.fingerprint.FingerprintManager
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.support.v4.app.DialogFragment
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import javax.crypto.Cipher
@@ -22,6 +22,7 @@ class FingerprintDialogFragment : DialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val inflater = activity!!.layoutInflater
         val dlg = AlertDialog.Builder(activity)
+                .setPositiveButton(R.string.print_pin_btn, { _, _ -> doPin() })
                 .setNegativeButton(R.string.print_cancel_btn, { _, _ -> doCancel() })
                 .setTitle(R.string.print_title)
                 .setView(inflater.inflate(R.layout.dlg_fingerprint, null))
@@ -36,6 +37,23 @@ class FingerprintDialogFragment : DialogFragment() {
         listener = context as BiometricManager.OnActionListener
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == 12345) {
+            when (resultCode) {
+                Activity.RESULT_OK -> listener?.onFound()
+                Activity.RESULT_CANCELED -> doCancel()
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    private fun doPin() {
+        listener?.onFallback()
+        val c = canceller
+        c?.cancel()
+        canceller = null
+    }
+
     private fun doCancel() {
         listener?.onCanceled()
         val c = canceller
@@ -44,7 +62,6 @@ class FingerprintDialogFragment : DialogFragment() {
     }
 
     fun start(context : Context, cipher : Cipher) : Boolean {
-        val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         val printman = context.getSystemService(Context.FINGERPRINT_SERVICE) as FingerprintManager
 
         if (!printman.isHardwareDetected()) {
@@ -55,17 +72,13 @@ class FingerprintDialogFragment : DialogFragment() {
             Log.d("printdialog", "no fingerprints enrolled!")
             return false
         }
-        if (!keyguard.isDeviceSecure()) {
-            Log.d("printdialog", "device is not secured with Pattern/PIN/Password")
-            return false
-        }
 
         // assume just fingerprints for now ...
         val crypto = FingerprintManager.CryptoObject(cipher)
         canceller = CancellationSignal()
         printman.authenticate(crypto, canceller, 0, Handler(), null)
 
-        show((context as AppCompatActivity).supportFragmentManager, "fingerprint")
+        show((context as AppCompatActivity?)?.supportFragmentManager, "fingerprint")
 
         return true
     }

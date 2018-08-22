@@ -1,7 +1,6 @@
 package org.mozilla.mmiller.dataprotect
 
 import android.annotation.TargetApi
-import android.app.KeyguardManager
 import android.content.Context
 import android.content.DialogInterface
 import android.hardware.biometrics.BiometricPrompt
@@ -15,6 +14,7 @@ class BiometricManager {
     interface OnActionListener {
         fun onFound()
         fun onCanceled()
+        fun onFallback()
         fun onError(code: Int)
     }
 
@@ -25,12 +25,6 @@ class BiometricManager {
             throw IllegalArgumentException("context must implement OnActionListener")
         }
         listener = context
-
-        val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-        if (!keyguard.isDeviceSecure()) {
-            Log.d("printdialog", "device is not secured with Pattern/PIN/Password")
-            listener?.onFound()
-        }
 
         // prep a Cipher for the eventual CryptoObject
         val cipher = keychain.createEncryptCipher("keychain")
@@ -58,7 +52,7 @@ class BiometricManager {
         }
         val prompt = BiometricPrompt.Builder(context)
                 .setTitle(res.getString(R.string.print_title))
-                .setDescription(res.getString(R.string.print_instructions_touch))
+                .setDescription(res.getString(R.string.print_instructions))
                 .setNegativeButton(res.getString(R.string.print_cancel_btn),
                         runner,
                         clickHandler)

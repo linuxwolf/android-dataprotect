@@ -1,6 +1,9 @@
 package org.mozilla.mmiller.dataprotect
 
+import android.app.Activity
+import android.app.KeyguardManager
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.support.v7.app.AppCompatActivity
 
@@ -58,6 +61,8 @@ class KeyValAdapter(
 }
 
 class MainActivity : AppCompatActivity(), BiometricManager.OnActionListener {
+    private val KEYGUARD_CRED_REQ_CODE = 12345
+
     private lateinit var keychain : KeystoreAccess
     private val itemKeys: List<String>
 
@@ -73,6 +78,7 @@ class MainActivity : AppCompatActivity(), BiometricManager.OnActionListener {
     private lateinit var keyvalAdapter : KeyValAdapter
     private lateinit var keyvalManager : RecyclerView.LayoutManager
     private lateinit var btnToggleLocked : Button
+    private lateinit var keyguard : KeyguardManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,7 +97,7 @@ class MainActivity : AppCompatActivity(), BiometricManager.OnActionListener {
                     Log.d("Main", "created pref '$kname'")
                 }
             }
-            editor.commit()
+            editor.apply()
         }
 
         keyvalAdapter = KeyValAdapter(prefs, keychain, itemKeys)
@@ -106,6 +112,8 @@ class MainActivity : AppCompatActivity(), BiometricManager.OnActionListener {
 
         btnToggleLocked = findViewById(R.id.btn_toggle_locked)
         btnToggleLocked.setOnClickListener { onToggleLockedClicked() }
+
+        keyguard = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
     }
 
     private fun onToggleLockedClicked() {
@@ -118,6 +126,11 @@ class MainActivity : AppCompatActivity(), BiometricManager.OnActionListener {
     }
 
     private fun startUnlock() {
+        if (!keyguard.isDeviceSecure()) {
+            onFound()
+            return
+        }
+
         val biometrics = BiometricManager()
         biometrics.start(this, keychain)
     }
@@ -140,5 +153,22 @@ class MainActivity : AppCompatActivity(), BiometricManager.OnActionListener {
         Log.d("Main", "fingerprint unlock success!")
         keychain.unlock()
         doLockUpdated()
+    }
+
+    override fun onFallback() {
+        Log.d("Main", "fingerprint fallback ...")
+
+        val intent = keyguard.createConfirmDeviceCredentialIntent(getString(R.string.print_title), null)
+        startActivityForResult(intent, KEYGUARD_CRED_REQ_CODE)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == KEYGUARD_CRED_REQ_CODE) {
+            when (resultCode) {
+                Activity.RESULT_CANCELED -> onCanceled()
+                Activity.RESULT_OK -> onFound()
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 }

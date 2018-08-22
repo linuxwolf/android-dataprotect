@@ -6,4 +6,5 @@
     <string name="print_title">Unlock DataProtect</string>
     <string name="print_instructions">Touch the fingerprint sensor</string>
     <string name="print_cancel_btn">Cancel</string>
+    <string name="print_pin_btn">Use Device PIN</string>
 </resources>
