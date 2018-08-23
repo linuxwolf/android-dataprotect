@@ -38,7 +38,7 @@ class BiometricManager {
     private fun startFingerprintManager(context : Context, cipher : Cipher) {
         val frag = FingerprintDialogFragment()
         if (!frag.start(context, cipher)) {
-            listener?.onCanceled()
+            listener?.onFallback()
         }
     }
 
@@ -68,7 +68,7 @@ class BiometricManager {
             Log.d("biometrics", "auth error $errorCode: $errString")
             when (errorCode) {
                 BiometricPrompt.BIOMETRIC_ERROR_HW_NOT_PRESENT,
-                BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS -> listener?.onFound()
+                BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS -> listener?.onFallback()
                 BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED -> listener?.onCanceled()
                 else -> listener?.onError(errorCode)
             }
