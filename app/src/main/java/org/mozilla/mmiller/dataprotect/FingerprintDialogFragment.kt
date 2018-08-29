@@ -102,8 +102,14 @@ class FingerprintDialogFragment : DialogFragment() {
             this@FingerprintDialogFragment.dismiss()
         }
         override fun onAuthenticationFailed() {
+            super.onAuthenticationFailed()
             Log.w("printdialog", "bad fingerprint")
             // TODO: show bad print icon ...
+        }
+
+        override fun onAuthenticationHelp(helpCode: Int, helpString: CharSequence?) {
+            Log.w("printdialog", "hint $helpCode: $helpString");
+            // TODO: show helper message ...
         }
 
         override fun onAuthenticationSucceeded(result: FingerprintManager.AuthenticationResult?) {

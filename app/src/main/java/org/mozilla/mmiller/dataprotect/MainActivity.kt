@@ -18,7 +18,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
-import org.mozilla.mmiller.dataprotect.FingerprintDialogFragment
 import java.nio.charset.StandardCharsets
 
 class KeyValAdapter(
